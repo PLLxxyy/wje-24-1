@@ -9,14 +9,14 @@ router.get('/projects/:projectId/phases', (req, res) => {
 })
 
 router.patch('/phases/:id', (req, res) => {
-  const { progress, actualCost, status, actualStart, actualEnd } = req.body
+  const { progress, actual_cost, status, actual_start, actual_end } = req.body
   const fields: string[] = []
   const values: any[] = []
   if (progress !== undefined) { fields.push('progress = ?'); values.push(progress) }
-  if (actualCost !== undefined) { fields.push('actual_cost = ?'); values.push(actualCost) }
+  if (actual_cost !== undefined) { fields.push('actual_cost = ?'); values.push(actual_cost) }
   if (status !== undefined) { fields.push('status = ?'); values.push(status) }
-  if (actualStart !== undefined) { fields.push('actual_start = ?'); values.push(actualStart) }
-  if (actualEnd !== undefined) { fields.push('actual_end = ?'); values.push(actualEnd) }
+  if (actual_start !== undefined) { fields.push('actual_start = ?'); values.push(actual_start) }
+  if (actual_end !== undefined) { fields.push('actual_end = ?'); values.push(actual_end) }
   if (fields.length === 0) return res.status(400).json({ error: '无更新字段' })
   values.push(req.params.id)
   db.prepare(`UPDATE phases SET ${fields.join(', ')} WHERE id = ?`).run(...values)

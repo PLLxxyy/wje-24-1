@@ -14,6 +14,7 @@ export interface Project {
   endDate: string | null
   ownerId: number
   createdAt: string
+  phases?: Phase[]
 }
 
 export interface Phase {

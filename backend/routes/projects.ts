@@ -14,20 +14,26 @@ router.get('/', (req: any, res) => {
     LEFT JOIN project_members pm ON p.id = pm.project_id
     WHERE p.owner_id = ? OR pm.user_id = ?
     GROUP BY p.id
-  `).all(userId, userId)
-  res.json(projects)
+  `).all(userId, userId) as any[]
+  
+  const projectsWithPhases = projects.map((project: any) => {
+    const phases = db.prepare('SELECT * FROM phases WHERE project_id = ? ORDER BY order_index').all(project.id)
+    return { ...project, phases }
+  })
+  
+  res.json(projectsWithPhases)
 })
 
 router.post('/', (req: any, res) => {
   const userId = getUserId(req)
-  const { name, address, totalBudget, startDate } = req.body
+  const { name, address, total_budget, start_date } = req.body
   const result = db.prepare('INSERT INTO projects (name, address, total_budget, start_date, owner_id) VALUES (?, ?, ?, ?, ?)')
-    .run(name, address || '', totalBudget || 0, startDate || null, userId)
+    .run(name, address || '', total_budget || 0, start_date || null, userId)
   const projectId = result.lastInsertRowid as number
 
   const phases = ['拆除', '水电', '泥瓦', '木工', '油漆']
   const phaseStmt = db.prepare('INSERT INTO phases (project_id, name, order_index, planned_start, planned_end, budget, progress, actual_cost, status) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?)')
-  const baseDate = startDate ? new Date(startDate) : new Date()
+  const baseDate = start_date ? new Date(start_date) : new Date()
   phases.forEach((name, i) => {
     const plannedStart = new Date(baseDate)
     plannedStart.setDate(baseDate.getDate() + i * 7)

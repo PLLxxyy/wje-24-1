@@ -9,11 +9,11 @@ router.get('/projects/:projectId/materials', (req, res) => {
 })
 
 router.post('/projects/:projectId/materials', (req, res) => {
-  const { name, category, quantity, price, purchaseDate, storeName, location, notes } = req.body
+  const { name, category, quantity, price, purchase_date, store_name, location, notes } = req.body
   const result = db.prepare(`
     INSERT INTO materials (project_id, name, category, quantity, price, purchase_date, store_name, location, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(req.params.projectId, name, category || '', quantity || '', price || 0, purchaseDate || null, storeName || '', location || '', notes || '')
+  `).run(req.params.projectId, name, category || '', quantity || '', price || 0, purchase_date || null, store_name || '', location || '', notes || '')
   const item = db.prepare('SELECT * FROM materials WHERE id = ?').get(result.lastInsertRowid)
   res.json(item)
 })

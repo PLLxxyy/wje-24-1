@@ -1,13 +1,28 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Home as HomeIcon, Trash2 } from 'lucide-react'
+import { Plus, Home as HomeIcon, Trash2, AlertTriangle } from 'lucide-react'
 import { useProjects } from '@/hooks/useProjects'
 import { formatDate, formatMoney } from '@/utils/format'
+import type { Phase } from '@/types'
 
 export default function Home() {
   const { projects, loading, createProject, deleteProject } = useProjects()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', address: '', totalBudget: '', startDate: '' })
+
+  const isOverdue = (phase: Phase) => {
+    if (phase.status === 'completed') return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const plannedEnd = new Date(phase.plannedEnd)
+    plannedEnd.setHours(0, 0, 0, 0)
+    return today > plannedEnd
+  }
+
+  const getOverduePhases = (project: typeof projects[0]) => {
+    if (!project.phases) return []
+    return project.phases.filter(isOverdue)
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,31 +91,53 @@ export default function Home() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {projects.map((project) => (
-          <Link
-            key={project.id}
-            to={`/projects/${project.id}`}
-            className="bg-white rounded-xl shadow p-5 hover:shadow-md transition"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2 text-blue-600">
-                <HomeIcon size={18} />
-                <h2 className="font-semibold">{project.name}</h2>
+        {projects.map((project) => {
+          const overduePhases = getOverduePhases(project)
+          const hasOverdue = overduePhases.length > 0
+          return (
+            <Link
+              key={project.id}
+              to={`/projects/${project.id}`}
+              className={`bg-white rounded-xl shadow p-5 hover:shadow-md transition ${hasOverdue ? 'border-2 border-red-400' : ''}`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <HomeIcon size={18} className={hasOverdue ? 'text-red-500' : 'text-blue-600'} />
+                  <h2 className={`font-semibold ${hasOverdue ? 'text-red-600' : ''}`}>{project.name}</h2>
+                  {hasOverdue && (
+                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <AlertTriangle size={10} />
+                      {overduePhases.length}个超期
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.preventDefault(); deleteProject(project.id) }}
+                  className="text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-              <button
-                onClick={(e) => { e.preventDefault(); deleteProject(project.id) }}
-                className="text-gray-400 hover:text-red-500"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">{project.address}</p>
-            <div className="flex justify-between mt-4 text-sm">
-              <span className="text-gray-600">总预算: {formatMoney(project.totalBudget)}</span>
-              <span className="text-gray-500">开工: {formatDate(project.startDate)}</span>
-            </div>
-          </Link>
-        ))}
+              <p className="text-sm text-gray-500 mt-1">{project.address}</p>
+              {hasOverdue && (
+                <div className="mt-3 p-2 bg-red-50 rounded-lg">
+                  <div className="text-xs text-red-600 font-medium mb-1">超期阶段:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {overduePhases.map((phase) => (
+                      <span key={phase.id} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                        {phase.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-between mt-4 text-sm">
+                <span className="text-gray-600">总预算: {formatMoney(project.totalBudget)}</span>
+                <span className="text-gray-500">开工: {formatDate(project.startDate)}</span>
+              </div>
+            </Link>
+          )
+        })}
       </div>
 
       {projects.length === 0 && (

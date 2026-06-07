@@ -7,16 +7,16 @@ const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'pdd170-secret'
 
 router.post('/register', (req, res) => {
-  const { username, password, displayName } = req.body
-  if (!username || !password || !displayName) {
+  const { username, password, display_name } = req.body
+  if (!username || !password || !display_name) {
     return res.status(400).json({ error: '缺少必填字段' })
   }
   const hash = bcrypt.hashSync(password, 10)
   try {
     const stmt = db.prepare('INSERT INTO users (username, password, display_name) VALUES (?, ?, ?)')
-    const result = stmt.run(username, hash, displayName)
+    const result = stmt.run(username, hash, display_name)
     const token = jwt.sign({ userId: result.lastInsertRowid }, JWT_SECRET)
-    res.json({ id: result.lastInsertRowid, username, displayName, token })
+    res.json({ id: result.lastInsertRowid, username, display_name, token })
   } catch (e: any) {
     res.status(400).json({ error: '用户名已存在' })
   }
