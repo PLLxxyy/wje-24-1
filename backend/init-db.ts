@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS phases (
   order_index INTEGER DEFAULT 0,
   planned_start TEXT,
   planned_end TEXT,
+  actual_start TEXT,
+  actual_end TEXT,
   budget REAL DEFAULT 0,
   progress INTEGER DEFAULT 0,
   actual_cost REAL DEFAULT 0,
@@ -64,7 +66,19 @@ CREATE TABLE IF NOT EXISTS materials (
 );
 `
 
+function migrateDb() {
+  const columns = db.prepare("PRAGMA table_info(phases)").all() as any[]
+  const columnNames = columns.map(c => c.name)
+  if (!columnNames.includes('actual_start')) {
+    db.prepare('ALTER TABLE phases ADD COLUMN actual_start TEXT').run()
+  }
+  if (!columnNames.includes('actual_end')) {
+    db.prepare('ALTER TABLE phases ADD COLUMN actual_end TEXT').run()
+  }
+}
+
 export function initDb() {
   db.exec(initSQL)
+  migrateDb()
   console.log('Database initialized')
 }

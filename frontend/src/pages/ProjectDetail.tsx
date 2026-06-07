@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Package } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Package, AlertTriangle } from 'lucide-react'
 import { usePhases } from '@/hooks/usePhases'
 import { useProjectMembers } from '@/hooks/useProjects'
 import { formatDate, formatMoney } from '@/utils/format'
+import type { Phase } from '@/types'
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +22,15 @@ export default function ProjectDetail() {
   const totalBudget = phases.reduce((s, p) => s + p.budget, 0)
   const isOverBudget = totalActualCost > totalBudget
 
+  const isOverdue = (phase: Phase) => {
+    if (phase.status === 'completed') return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const plannedEnd = new Date(phase.plannedEnd)
+    plannedEnd.setHours(0, 0, 0, 0)
+    return today > plannedEnd
+  }
+
   const handleProgressChange = async (phaseId: number, progress: number) => {
     let status: 'not_started' | 'in_progress' | 'completed' = 'not_started'
     if (progress >= 100) status = 'completed'
@@ -28,13 +38,15 @@ export default function ProjectDetail() {
     await updatePhase(phaseId, { progress, status })
   }
 
-  const statusColor = (status: string) => {
+  const statusColor = (status: string, overdue: boolean) => {
+    if (overdue) return 'bg-red-500'
     if (status === 'completed') return 'bg-green-500'
     if (status === 'in_progress') return 'bg-blue-500'
     return 'bg-gray-300'
   }
 
-  const statusText = (status: string) => {
+  const statusText = (status: string, overdue: boolean) => {
+    if (overdue) return '已超期'
     if (status === 'completed') return '已完成'
     if (status === 'in_progress') return '进行中'
     return '未开始'
@@ -82,44 +94,76 @@ export default function ProjectDetail() {
 
       {activeTab === 'phases' && (
         <div className="space-y-4">
-          {phases.map((phase) => (
-            <div key={phase.id} className="bg-white rounded-xl shadow p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${statusColor(phase.status)}`} />
-                  <h3 className="font-semibold">{phase.name}</h3>
-                  <span className="text-xs text-gray-500">{statusText(phase.status)}</span>
+          {phases.map((phase) => {
+            const overdue = isOverdue(phase)
+            return (
+              <div key={phase.id} className={`bg-white rounded-xl shadow p-5 ${overdue ? 'border-2 border-red-400' : ''}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${statusColor(phase.status, overdue)}`} />
+                    <h3 className={`font-semibold ${overdue ? 'text-red-600' : ''}`}>{phase.name}</h3>
+                    <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                      {overdue && <AlertTriangle size={12} className="inline mr-1" />}
+                      {statusText(phase.status, overdue)}
+                    </span>
+                  </div>
+                  <Link to={`/phases/${phase.id}/diary`} className="text-sm text-blue-600 hover:underline">
+                    施工日记
+                  </Link>
                 </div>
-                <Link to={`/phases/${phase.id}/diary`} className="text-sm text-blue-600 hover:underline">
-                  施工日记
-                </Link>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className={`text-sm p-2 bg-gray-50 rounded-lg ${overdue ? 'bg-red-50' : ''}`}>
+                    <div className="text-xs text-gray-500 mb-1">计划日期（只读）</div>
+                    <div className={`font-medium ${overdue ? 'text-red-600' : 'text-gray-700'}`}>
+                      {formatDate(phase.plannedStart)} ~ {formatDate(phase.plannedEnd)}
+                    </div>
+                  </div>
+                  <div className="text-sm p-2 bg-blue-50 rounded-lg">
+                    <div className="text-xs text-gray-500 mb-1">预算</div>
+                    <div className="font-medium text-gray-700">{formatMoney(phase.budget)}</div>
+                  </div>
+                  <div className="text-sm">
+                    <label className="text-xs text-gray-500 mb-1 block">实际开始</label>
+                    <input
+                      type="date"
+                      value={phase.actualStart || ''}
+                      onChange={(e) => updatePhase(phase.id, { actualStart: e.target.value || null })}
+                      className="w-full border rounded px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div className="text-sm">
+                    <label className="text-xs text-gray-500 mb-1 block">实际结束</label>
+                    <input
+                      type="date"
+                      value={phase.actualEnd || ''}
+                      onChange={(e) => updatePhase(phase.id, { actualEnd: e.target.value || null })}
+                      className="w-full border rounded px-2 py-1 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="text-sm text-gray-500">进度: {phase.progress}%</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={phase.progress}
+                    onChange={(e) => handleProgressChange(phase.id, Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span>实际花费:</span>
+                  <input
+                    type="number"
+                    value={phase.actualCost}
+                    onChange={(e) => updatePhase(phase.id, { actualCost: Number(e.target.value) })}
+                    className="border rounded px-2 py-1 w-28 text-sm"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
-                <div>计划: {formatDate(phase.plannedStart)} ~ {formatDate(phase.plannedEnd)}</div>
-                <div>预算: {formatMoney(phase.budget)}</div>
-              </div>
-              <div className="mb-2">
-                <label className="text-sm text-gray-500">进度: {phase.progress}%</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={phase.progress}
-                  onChange={(e) => handleProgressChange(phase.id, Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span>实际花费:</span>
-                <input
-                  type="number"
-                  value={phase.actualCost}
-                  onChange={(e) => updatePhase(phase.id, { actualCost: Number(e.target.value) })}
-                  className="border rounded px-2 py-1 w-28 text-sm"
-                />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

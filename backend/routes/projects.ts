@@ -26,9 +26,14 @@ router.post('/', (req: any, res) => {
   const projectId = result.lastInsertRowid as number
 
   const phases = ['拆除', '水电', '泥瓦', '木工', '油漆']
-  const phaseStmt = db.prepare('INSERT INTO phases (project_id, name, order_index, budget, progress, actual_cost, status) VALUES (?, ?, ?, ?, 0, 0, ?)')
+  const phaseStmt = db.prepare('INSERT INTO phases (project_id, name, order_index, planned_start, planned_end, budget, progress, actual_cost, status) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?)')
+  const baseDate = startDate ? new Date(startDate) : new Date()
   phases.forEach((name, i) => {
-    phaseStmt.run(projectId, name, i, 0, 'not_started')
+    const plannedStart = new Date(baseDate)
+    plannedStart.setDate(baseDate.getDate() + i * 7)
+    const plannedEnd = new Date(plannedStart)
+    plannedEnd.setDate(plannedStart.getDate() + 6)
+    phaseStmt.run(projectId, name, i, plannedStart.toISOString().split('T')[0], plannedEnd.toISOString().split('T')[0], 'not_started')
   })
 
   const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId)

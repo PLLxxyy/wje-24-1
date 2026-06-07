@@ -23,6 +23,8 @@ export interface Phase {
   orderIndex: number
   plannedStart: string
   plannedEnd: string
+  actualStart: string | null
+  actualEnd: string | null
   budget: number
   progress: number
   actualCost: number
